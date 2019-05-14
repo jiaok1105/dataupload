@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+	<context:property-placeholder location="conf.properties"/>
+    <!--<context:property-placeholder location="file:D:\\qf_uploadData\\conf.properties"/>-->
+
+    <!-- 启用注解 -->
+    <context:annotation-config />
+   
+    <context:component-scan base-package="fuyoubaojian.qfcode.etl" />
+
+    <!-- ************** DataSource: dbcp 数据库配置**************** -->
+     <!-- 
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close" lazy-init="false">
+        <property name="driverClassName"
+                  value="com.mysql.jdbc.Driver" />
+        <property name="url"
+                  value="jdbc:mysql://172.30.1.11:1888/lyg_wch" />
+        <property name="username" value="root" />
+        <property name="password" value="root" />
+    </bean>
+    
+    <bean id="jingjiangDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close" lazy-init="false">
+        <property name="driverClassName"
+                  value="oracle.jdbc.OracleDriver" />
+        <property name="url"
+                  value="jdbc:oracle:thin:@172.16.0.132:1521:ORCL" />
+        <property name="username" value="supmccsc" />
+        <property name="password" value="supmccsc" />
+    </bean>
+    -->
+    
+   <!-- 妇幼系统数据库 -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close" lazy-init="false">
+        <property name="driverClassName"
+                  value="com.mysql.jdbc.Driver" />
+         <property name="url"
+                  value="jdbc:mysql://101.201.51.133:9999/ceshi_wch" />
+        <property name="username" value="root" />
+        <property name="password" value="20050701" />
+    </bean>
+    
+    <!-- 前置机数据库 oracle -->
+    <!--<bean id="jingjiangDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close" lazy-init="false">
+        <property name="driverClassName"
+                  value="oracle.jdbc.OracleDriver" />
+        <property name="url"
+                  value="jdbc:oracle:thin:@172.16.0.132:1521:ORCL" />
+        <property name="username" value="supmss" />
+        <property name="password" value="supmss" />
+    </bean>-->
+    <bean id="jingjiangDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+          destroy-method="close" lazy-init="false">
+        <property name="driverClassName"
+                  value="com.mysql.jdbc.Driver" />
+        <property name="url"
+                  value="jdbc:mysql://101.201.51.133:9999/ceshi_wch" />
+        <property name="username" value="root" />
+        <property name="password" value="20050701" />
+    </bean>
+     
+
+    <!-- *********事物管理************** -->
+    <bean id="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        
+        <property name="dataSource" ref="jingjiangDataSource"></property>
+    </bean>
+    
+     <!--利用了拦截器的原理。-->     
+   <bean id="transactionInterceptor"    
+         class="org.springframework.transaction.interceptor.TransactionInterceptor">     
+        <property name="transactionManager">      
+                  <ref bean="transactionManager" />     
+        </property>     
+    <!-- 配置事务属性 -->  
+   <property name="transactionAttributes">     
+        <props>     
+            <prop key="delete*">PROPAGATION_REQUIRED</prop>  
+            <prop key="operate*">PROPAGATION_REQUIRED,-Exception</prop>     
+            <prop key="insert*">PROPAGATION_REQUIRED,-Exception</prop>     
+            <prop key="update*">PROPAGATION_REQUIRED,-Exception</prop>     
+            <prop key="save*">PROPAGATION_REQUIRED</prop>     
+            <prop key="find*">PROPAGATION_REQUIRED,readOnly</prop>     
+       </props>     
+   </property>     
+   </bean>    
+
+
+    <!-- 创建spring jdbcTemplate-->
+    <bean class="org.springframework.jdbc.core.JdbcTemplate" id="jdbcTemplate">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>    
+    <bean class="org.springframework.jdbc.core.JdbcTemplate" id="jingjiangJdbcTemplate">
+        <property name="dataSource" ref="jingjiangDataSource"></property>
+    </bean>
+    
+    
+    
+    <!-- Test   -->
+	<bean id="Upload_Test_INFOJob" class="fuyoubaojian.qfcode.etl.Upload_Test"></bean>
+    <bean id="Upload_Test_INFOJobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">  
+            <ref bean="Upload_Test_INFOJob"/>
+        </property>  
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->  
+            <value>execute</value>  
+        </property>  
+    </bean>
+    <bean id="Upload_Test_INFOCronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="Upload_Test_INFOJobMethod"></property>
+		<!-- 每天下午21:00点开始 每1分钟执行一次   -->
+		<property name="cronExpression" value="00 06 17 * * ?"></property>
+	</bean>
+	
+	
+	<!--儿童管理卡及新生儿家庭方式记录上传 1-->
+	<bean id="Upload_family_Visit_Job" class="fuyoubaojian.qfcode.qu.Upload_Family_Visit">
+		<property name="startDate" value="${Upload_FamilyVisit_START_DATE}"/>
+		<property name="endDate"   value="${Upload_FamilyVisit_END_DATE}"/>
+		<property name="del_flag"   value="${Upload_FamilyVisit_FLAG}"/>
+    </bean>      
+    <bean id="Upload_family_Visit_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">  
+            <ref bean="Upload_family_Visit_Job"/>
+        </property>  
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->  
+            <value>execute</value>  
+        </property>
+    </bean>
+    <bean id="Upload_family_Visit_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="Upload_family_Visit_JobMethod"></property>
+		<!-- 每天下午21:00点开始 每1分钟执行一次   -->
+		<property name="cronExpression" value="00 13 10 * * ?"></property>
+	</bean>
+	
+	<!--儿童 1-8 月随访上传 2-->
+	<bean id="Upload_childOne2Eight_Job" class="fuyoubaojian.qfcode.qu.Upload_ChildOne2Eight_Visit">
+		<property name="startDate" value="${Upload_childOne2Eight_START_DATE}"/>
+		<property name="endDate"   value="${Upload_childOne2Eight_END_DATE}"/>
+		<property name="del_flag"   value="${Upload_childOne2Eight_FLAG}"/>
+    </bean>      
+    <bean id="Upload_childOne2Eight_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">  
+            <ref bean="Upload_childOne2Eight_Job"/>
+        </property>  
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->  
+            <value>execute</value>  
+        </property>
+    </bean>
+    <bean id="Upload_childOne2Eight_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="Upload_childOne2Eight_JobMethod"></property>
+		<!-- 每天下午21:00点开始 每1分钟执行一次   -->
+		<property name="cronExpression" value="00 16 14 * * ?"></property>
+	</bean>
+	
+	
+	<!--儿童 12-30 月随访记录上传 3-->
+	<bean id="Upload_ChildTwelve2Thirty_Job" class="fuyoubaojian.qfcode.qu.Upload_ChildTwelve2Thirty_Visit">
+		<property name="startDate" value="${Upload_ChildTwelve2Thirty_START_DATE}"/>
+		<property name="endDate"   value="${Upload_ChildTwelve2Thirty_END_DATE}"/>
+		<property name="del_flag"   value="${Upload_ChildTwelve2Thirty_FLAG}"/>
+    </bean>      
+    <bean id="Upload_ChildTwelve2Thirty_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">  
+            <ref bean="Upload_ChildTwelve2Thirty_Job"/>
+        </property>  
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->  
+            <value>execute</value>  
+        </property>
+    </bean>
+    <bean id="Upload_ChildTwelve2Thirty_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="Upload_ChildTwelve2Thirty_JobMethod"></property>
+		<!-- 每天下午21:00点开始 每1分钟执行一次   -->
+		<property name="cronExpression" value="00 18 14 * * ?"></property>
+	</bean>
+
+    <!-- 儿童 3-6 岁随访记录上传 4-->
+    <bean id="Upload_ChildThree2Six_Job" class="fuyoubaojian.qfcode.qu.Upload_ChildThree2Six_Visit">
+        <property name="startDate" value="${Upload_ChildThree2Six_START_DATE}"/>
+        <property name="endDate"   value="${Upload_ChildThree2Six_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_ChildThree2Six_FLAG}"/>
+    </bean>
+    <bean id="Upload_ChildThree2Six_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_ChildThree2Six_Job"/>
+        </property>
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_ChildThree2Six_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_ChildThree2Six_JobMethod"></property>
+        <!-- 每天下午21:00点开始 每1分钟执行一次   -->
+        <property name="cronExpression" value="00 20 14 * * ?"></property>
+    </bean>
+
+    <!-- 妇女管理卡产前随访上传 5-->
+    <bean id="Upload_GraManageCq_Job" class="fuyoubaojian.qfcode.qu.Upload_GraManageCq_Visit">
+        <property name="startDate" value="${Upload_GraManageCq_START_DATE}"/>
+        <property name="endDate"   value="${Upload_GraManageCq_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_GraManageCq_FLAG}"/>
+    </bean>
+    <bean id="Upload_GraManageCq_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_GraManageCq_Job"/>
+        </property>
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_GraManageCq_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_GraManageCq_JobMethod"></property>
+        <!-- 每天下午21:00点开始 每1分钟执行一次   -->
+        <property name="cronExpression" value="00 21 14 * * ?"></property>
+    </bean>
+
+    <!-- 妇女 2-5 次随访上传 6-->
+    <bean id="Upload_GraTwo2Five_Job" class="fuyoubaojian.qfcode.qu.Upload_GraTwo2Five_Visit">
+        <property name="startDate" value="${Upload_GraTwo2Five_START_DATE}"/>
+        <property name="endDate"   value="${Upload_GraTwo2Five_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_GraTwo2Five_FLAG}"/>
+    </bean>
+    <bean id="Upload_GraTwo2Five_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_GraTwo2Five_Job"/>
+        </property>
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_GraTwo2Five_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_GraTwo2Five_JobMethod"></property>
+        <!-- 每天下午21:00点开始 每1分钟执行一次   -->
+        <property name="cronExpression" value="00 22 14 * * ?"></property>
+    </bean>
+
+    <!-- 妇女产后访视和 42 天上传    产后访视 7-->
+    <bean id="Upload_GraChAnd42Day_Job" class="fuyoubaojian.qfcode.qu.Upload_GraChAnd42Day_Ch_Visit">
+        <property name="startDate" value="${Upload_GraChAnd42Day_START_DATE}"/>
+        <property name="endDate"   value="${Upload_GraChAnd42Day_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_GraChAnd42Day_FLAG}"/>
+    </bean>
+    <bean id="Upload_GraChAnd42Day_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_GraChAnd42Day_Job"/>
+        </property>
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_GraChAnd42Day_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_GraChAnd42Day_JobMethod"></property>
+        <!-- 每天下午21:00点开始 每1分钟执行一次   -->
+        <property name="cronExpression" value="00 27 14 * * ?"></property>
+    </bean>
+
+    <!-- 妇女产后访视和 42 天上传     42 天上传 8-->
+    <bean id="Upload_GraChAnd42Day_42Day_Job" class="fuyoubaojian.qfcode.qu.Upload_GraChAnd42Day_42Day_Visit">
+        <property name="startDate" value="${Upload_GraChAnd42Day_42Day_START_DATE}"/>
+        <property name="endDate"   value="${Upload_GraChAnd42Day_42Day_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_GraChAnd42Day_42Day_FLAG}"/>
+    </bean>
+    <bean id="Upload_GraChAnd42Day_42Day_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_GraChAnd42Day_42Day_Job"/>
+        </property>
+        <property name="targetMethod">  <!-- 要执行的方法名称 -->
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_GraChAnd42Day_42Day_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_GraChAnd42Day_42Day_JobMethod"></property>
+        <!-- 每天下午21:00点开始 每1分钟执行一次   -->
+        <property name="cronExpression" value="00 33 14 * * ?"></property>
+    </bean>
+
+    <!--出生证签发上传 -->
+    <!--<bean id="Upload_cszmqf_Job" clafuyoubaojian.qfcodeg.etl.Upload_cszmqf">
+        <property name="startDate" value="${Upload_cszmqf_START_DATE}"/>
+        <property name="endDate"   value="${Upload_cszmqf_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_cszmqf_FLAG}"/>
+    </bean>
+    <bean id="Upload_cszmqf_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_cszmqf_Job"/>
+        </property>
+        <property name="targetMethod">  &lt;!&ndash; 要执行的方法名称 &ndash;&gt;
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_cszmqf_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_cszmqf_JobMethod"></property>
+        &lt;!&ndash; 每天下午21:00点开始 每1分钟执行一次   &ndash;&gt;
+        <property name="cronExpression" value="20 05 01 * * ?"></property>
+    </bean>-->
+
+
+    <!--出生证废证上传 -->
+    <!--<bean id="Upload_cszmfz_Job" clafuyoubaojian.qfcodeg.etl.Upload_cszmfz">
+        <property name="startDate" value="${Upload_cszmfz_START_DATE}"/>
+        <property name="endDate"   value="${Upload_cszmfz_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_cszmfz_FLAG}"/>
+    </bean>
+    <bean id="Upload_cszmfz_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_cszmfz_Job"/>
+        </property>
+        <property name="targetMethod">  &lt;!&ndash; 要执行的方法名称 &ndash;&gt;
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_cszmfz_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_cszmfz_JobMethod"></property>
+        &lt;!&ndash; 每天下午21:00点开始 每1分钟执行一次   &ndash;&gt;
+        <property name="cronExpression" value="20 05 01 * * ?"></property>
+    </bean>-->
+
+
+    <!--出生证流转上传 -->
+    <!--<bean id="Upload_cszmlz_Job" clafuyoubaojian.qfcodeg.etl.Upload_cszmlz">
+        <property name="startDate" value="${Upload_cszmlz_START_DATE}"/>
+        <property name="endDate"   value="${Upload_cszmlz_END_DATE}"/>
+        <property name="del_flag"   value="${Upload_cszmlz_FLAG}"/>
+    </bean>
+    <bean id="Upload_cszmlz_JobMethod" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+        <property name="targetObject">
+            <ref bean="Upload_cszmlz_Job"/>
+        </property>
+        <property name="targetMethod">  &lt;!&ndash; 要执行的方法名称 &ndash;&gt;
+            <value>execute</value>
+        </property>
+    </bean>
+    <bean id="Upload_cszmlz_CronTriggerBean" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="Upload_cszmlz_JobMethod"></property>
+        &lt;!&ndash; 每天下午21:00点开始 每1分钟执行一次   &ndash;&gt;
+        <property name="cronExpression" value="20 05 01 * * ?"></property>
+    </bean>-->
+	
+	
+  
+
+    <!-- ======================== 调度工厂 ======================== -->  
+    <bean id="SpringJobSchedulerFactoryBean" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">  
+        <property name="triggers">  
+            <list>   
+            	
+                <!-- Test   -->
+                <!--<ref bean="Upload_Test_INFOCronTriggerBean"/>-->
+                <!-- 儿童管理卡及新生儿家庭方式记录上传 -->
+                <ref bean="Upload_family_Visit_CronTriggerBean"/>
+                <!-- 儿童 1-8 月随访上传 -->
+                <ref bean="Upload_childOne2Eight_CronTriggerBean"/>
+                <!-- 儿童 12-30 月随访记录上传 -->
+                <ref bean="Upload_ChildTwelve2Thirty_CronTriggerBean"/>
+                <!-- 儿童 3-6 岁随访记录上传 -->
+                <ref bean="Upload_ChildThree2Six_CronTriggerBean"/>
+                <!-- 妇女管理卡产前随访上传 -->
+                <ref bean="Upload_GraManageCq_CronTriggerBean"/>
+                <!-- 妇女 2-5 次随访上传 -->
+                <ref bean="Upload_GraTwo2Five_CronTriggerBean"/>
+                <!-- 妇女产后访视上传 -->
+                <ref bean="Upload_GraChAnd42Day_CronTriggerBean"/>
+                <!-- 42 天上传-->
+                <ref bean="Upload_GraChAnd42Day_42Day_CronTriggerBean"/>
+
+
+
+
+            </list>
+        </property>  
+    </bean>
+
+</beans>
